@@ -1,5 +1,5 @@
 {
-  "name": "ESP32FIRMWARE",
+  "name": "qwertyOS",
   "version": "1.0.0-beta",
   "builds": [{
     "chipFamily": "ESP32",
@@ -7,4 +7,5 @@
       { "path": "firmware.bin", "offset": 0 }
     ]
   }]
+
 }

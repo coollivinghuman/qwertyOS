@@ -1,0 +1,10 @@
+{
+  "name": "ESP32FIRMWARE",
+  "version": "1.0.0-beta",
+  "builds": [{
+    "chipFamily": "ESP32",
+    "parts": [
+      { "path": "firmware.bin", "offset": 0 }
+    ]
+  }]
+}

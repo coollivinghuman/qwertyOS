@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 Flasher</title>
+<script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --glass-border: rgba(255,255,255,0.22);
+    --accent: #0A84FF;
+    --accent-glow: rgba(10,132,255,0.4);
+    --warn: #FF9F0A;
+    --text: rgba(255,255,255,0.95);
+    --text-sec: rgba(255,255,255,0.52);
+  }
+
+  body {
+    min-height: 100vh;
+    background: #000;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    color: var(--text);
+  }
+
+  .bg { position: fixed; inset: 0; z-index: 0; }
+
+  .blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.45;
+    animation: drift linear infinite;
+  }
+
+  .b1 { width: 650px; height: 650px; background: radial-gradient(circle, #0A84FF, #004CB3); top: -220px; left: -180px; animation-duration: 22s; }
+  .b2 { width: 550px; height: 550px; background: radial-gradient(circle, #5E5CE6, #2A2890); bottom: -180px; right: -120px; animation-duration: 28s; animation-direction: reverse; }
+  .b3 { width: 420px; height: 420px; background: radial-gradient(circle, #30D158, #145C28); top: 55%; left: 48%; transform: translate(-50%,-50%); animation-duration: 35s; opacity: 0.2; }
+
+  @keyframes drift {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    33%       { transform: translate(28px,-38px) scale(1.06); }
+    66%       { transform: translate(-18px,22px) scale(0.94); }
+  }
+
+  .grain {
+    position: fixed; inset: 0; z-index: 1; opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 128px; pointer-events: none;
+  }
+
+  .container {
+    position: relative; z-index: 10;
+    width: 100%; max-width: 420px; padding: 16px;
+    animation: fadeUp 0.75s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(36px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .card {
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(48px) saturate(200%);
+    -webkit-backdrop-filter: blur(48px) saturate(200%);
+    border: 1px solid var(--glass-border);
+    border-radius: 30px;
+    padding: 32px;
+    box-shadow: 0 36px 72px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.18);
+  }
+
+  .logo-wrap { display: flex; align-items: center; gap: 14px; margin-bottom: 26px; }
+
+  .logo-icon {
+    width: 50px; height: 50px;
+    background: linear-gradient(135deg, #0A84FF, #5856D6);
+    border-radius: 15px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 28px var(--accent-glow);
+    animation: glow-pulse 3s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 8px 28px var(--accent-glow); }
+    50%       { box-shadow: 0 8px 42px rgba(10,132,255,0.65); }
+  }
+
+  .logo-icon svg { width: 26px; height: 26px; }
+
+  .logo-text h1 { font-size: 19px; font-weight: 600; letter-spacing: -0.4px; }
+  .logo-text p  { font-size: 12px; color: var(--text-sec); margin-top: 2px; }
+
+  .beta-banner {
+    background: rgba(255,159,10,0.11);
+    border: 1px solid rgba(255,159,10,0.28);
+    border-radius: 15px;
+    padding: 13px 15px;
+    margin-bottom: 24px;
+    display: flex; gap: 10px; align-items: flex-start;
+    animation: fadeUp 0.75s 0.08s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+
+  .beta-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+  .beta-text { font-size: 12.5px; line-height: 1.55; color: rgba(255,200,100,0.88); }
+  .beta-text strong { color: var(--warn); font-weight: 600; }
+
+  .section-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.9px; color: var(--text-sec); margin-bottom: 9px; padding-left: 2px;
+  }
+
+  .selector-group {
+    background: rgba(0,0,0,0.28);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 17px; overflow: hidden; margin-bottom: 16px;
+    animation: fadeUp 0.75s 0.16s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+
+  .selector-item {
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer; transition: background 0.2s;
+  }
+
+  .selector-item:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .selector-item:hover { background: rgba(255,255,255,0.05); }
+
+  .selector-item label {
+    font-size: 14px; font-weight: 500;
+    display: flex; flex-direction: column; gap: 2px;
+    flex: 1; cursor: pointer;
+  }
+
+  .selector-item label span { font-size: 11.5px; color: var(--text-sec); font-weight: 400; }
+
+  .radio-outer {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.22);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .radio-outer::after {
+    content: ''; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--accent); transform: scale(0);
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  input[type=radio] { display: none; }
+
+  input[type=radio]:checked ~ .radio-outer {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-glow);
+  }
+
+  input[type=radio]:checked ~ .radio-outer::after { transform: scale(1); }
+
+  .chip {
+    font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 20px;
+    background: rgba(10,132,255,0.18); color: var(--accent);
+    border: 1px solid rgba(10,132,255,0.28); letter-spacing: 0.3px; white-space: nowrap;
+  }
+
+  .chip.beta { background: rgba(255,159,10,0.15); color: var(--warn); border-color: rgba(255,159,10,0.28); }
+
+  .divider { height: 1px; background: rgba(255,255,255,0.07); margin: 6px 0 22px; }
+
+  .install-wrap {
+    animation: fadeUp 0.75s 0.28s cubic-bezier(0.34,1.56,0.64,1) both;
+    width: 100%;
+  }
+
+  esp-web-install-button {
+    width: 100%;
+    display: block;
+  }
+
+  .btn-install {
+    width: 100%; padding: 17px;
+    border-radius: 16px; border: none;
+    font-size: 16px; font-weight: 600; letter-spacing: -0.2px;
+    cursor: pointer; position: relative; overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    background: linear-gradient(135deg, #0A84FF 0%, #5856D6 100%);
+    color: #fff; box-shadow: 0 12px 32px var(--accent-glow);
+    font-family: inherit;
+  }
+
+  .btn-install:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 18px 48px rgba(10,132,255,0.52);
+  }
+
+  .btn-install:active { transform: scale(0.98); }
+
+  .shimmer {
+    position: absolute; inset: 0;
+    background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.22) 50%, transparent 65%);
+    transform: translateX(-100%);
+    animation: shimmer 2.8s infinite;
+  }
+
+  @keyframes shimmer {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(220%); }
+  }
+
+  .alert-box {
+    border-radius: 14px; padding: 13px 15px;
+    font-size: 12.5px; line-height: 1.55; margin-top: 14px;
+  }
+
+  .alert-box.error {
+    background: rgba(255,69,58,0.1);
+    border: 1px solid rgba(255,69,58,0.25);
+    color: rgba(255,130,120,0.9);
+  }
+
+  .alert-box strong { font-weight: 600; }
+
+  .footer-note {
+    text-align: center; font-size: 11px; color: var(--text-sec); margin-top: 18px;
+    animation: fadeUp 0.75s 0.38s cubic-bezier(0.34,1.56,0.64,1) both;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 440px) {
+    .card { padding: 24px 18px; border-radius: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg">
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+</div>
+<div class="grain"></div>
+
+<div class="container">
+  <div class="card">
+
+    <div class="logo-wrap">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="16" height="16" rx="2"/>
+          <rect x="9" y="9" width="6" height="6"/>
+          <line x1="9" y1="2" x2="9" y2="4"/>
+          <line x1="15" y1="2" x2="15" y2="4"/>
+          <line x1="9" y1="20" x2="9" y2="22"/>
+          <line x1="15" y1="20" x2="15" y2="22"/>
+          <line x1="20" y1="9" x2="22" y2="9"/>
+          <line x1="20" y1="14" x2="22" y2="14"/>
+          <line x1="2" y1="9" x2="4" y2="9"/>
+          <line x1="2" y1="14" x2="4" y2="14"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <h1>ESP32 Flasher</h1>
+        <p>Web Installation Tool</p>
+      </div>
+    </div>
+
+    <div class="beta-banner">
+      <div class="beta-icon">⚠️</div>
+      <div class="beta-text">
+        <strong>Wersja Beta</strong> — Oprogramowanie jest w fazie testów i może zawierać błędy. Używaj na własne ryzyko. W razie problemów odśwież stronę i spróbuj ponownie.
+      </div>
+    </div>
+
+    <div class="section-label">Urządzenie</div>
+    <div class="selector-group">
+      <div class="selector-item" onclick="this.querySelector('input').checked=true">
+        <input type="radio" name="device" id="d1" checked>
+        <label for="d1">
+          ESP32-WROOM-32
+          <span>Dual-core 240 MHz · 4 MB Flash</span>
+        </label>
+        <span class="chip">v1</span>
+        <div class="radio-outer"></div>
+      </div>
+    </div>
+
+    <div class="section-label">Wersja firmware</div>
+    <div class="selector-group">
+      <div class="selector-item" onclick="this.querySelector('input').checked=true">
+        <input type="radio" name="version" id="v1" checked>
+        <label for="v1">
+          v1.0.0-beta
+          <span>Najnowsza · Wydana 2025-01-10</span>
+        </label>
+        <span class="chip beta">BETA</span>
+        <div class="radio-outer"></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="install-wrap">
+      <esp-web-install-button manifest="manifest.json">
+        <button slot="activate" class="btn-install">
+          <div class="shimmer"></div>
+          ⚡ Zainstaluj firmware
+        </button>
+        <div slot="unsupported" class="alert-box error">
+          Twoja przeglądarka nie obsługuje Web Serial API.<br>
+          Użyj <strong>Chrome</strong> lub <strong>Edge</strong> w wersji 89+.
+        </div>
+        <div slot="not-allowed" class="alert-box error">
+          Strona musi być serwowana przez <strong>HTTPS</strong> lub <strong>localhost</strong>.
+        </div>
+      </esp-web-install-button>
+    </div>
+
+  </div>
+
+  <div class="footer-note">
+    Wymaga Chrome lub Edge 89+ · Połącz ESP32 przez USB przed instalacją<br>
+    Strona musi działać na HTTPS lub localhost
+  </div>
+</div>
+
+</body>
+</html>

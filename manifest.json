@@ -1,5 +1,5 @@
 {
-  "name": "Mój Firmware ESP32",
+  "name": "qwertyOS",
   "version": "1.0.0-beta",
   "builds": [{
     "chipFamily": "ESP32",
@@ -10,3 +10,4 @@
     ]
   }]
 }
+
